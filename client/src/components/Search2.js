@@ -1,5 +1,5 @@
 /* global google */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import './styles/search.css';
 import { connect } from 'react-redux';
 import { useNavigate, NavLink } from 'react-router-dom';
