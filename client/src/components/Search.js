@@ -57,7 +57,7 @@ function Search(props) {
         if (!window.google || !inputValue) return;
 
         if (!sessionToken.current) {
-            sessionToken.current = new google.maps.places.AutocompleteSession();
+            sessionToken.current = new google.maps.places.AutocompleteSessionToken();
         }
 
         const service = new google.maps.places.AutocompleteSuggestion();
