@@ -1,20 +1,20 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './styles/search.css';
-import { useState } from 'react';
-import PlacesAutocomplete from 'react-places-autocomplete';
 import { connect } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, NavLink } from 'react-router-dom';
 import logo from '../images/america.jpg';
-import { NavLink } from 'react-router-dom';
 import useOnclickOutside from "react-cool-onclickoutside";
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+const apiKey = process.env.API_KEY;
 
 function Search(props) {
-
     const [address, setAddress] = useState("");
+    const [suggestions, setSuggestions] = useState([]);
     const [openMenu, setOpenMenu] = useState(false);
+    const inputRef = useRef(null);
+    const sessionToken = useRef(null);
 
     const ref = useOnclickOutside(() => {
         setOpenMenu(false);
@@ -28,74 +28,96 @@ function Search(props) {
 
     let formattedAddress = address.split(" ").join("%20");
 
-
     const getRepInfoByAddress = () => {
-
-        fetch(`https://www.googleapis.com/civicinfo/v2/representatives?key=AIzaSyDatTrCAc_AsUpv-RrJ1uT-a9kvyF6SJS8&address=${formattedAddress}`)
+        fetch(`https://www.googleapis.com/civicinfo/v2/representatives?key=${apiKey}&address=${formattedAddress}`)
             .then(response => {
                 if (!response.ok) {
                     throw toast('Please enter a valid US address!', {
                         className: "customToast"
-                    }
-                    )
-                } return response.json()
+                    });
+                }
+                return response.json();
             })
             .then(result => {
-                console.log(result)
-                props.onFetchReps(result)
-            }).then(() => toResults());
+                console.log(result);
+                props.onFetchReps(result);
+            })
+            .then(() => toResults());
     };
 
     const toResults = () => {
-        navigate('/results')
+        navigate('/results');
+    };
+
+    const handleInputChange = (e) => {
+        const inputValue = e.target.value;
+        setAddress(inputValue);
+
+        if (!window.google || !inputValue) return;
+
+        if (!sessionToken.current) {
+            sessionToken.current = new google.maps.places.AutocompleteSession();
+        }
+
+        const service = new google.maps.places.AutocompleteSuggestion();
+        const request = {
+            input: inputValue,
+            sessionToken: sessionToken.current
+        };
+
+        service.getSuggestions(request, (predictions, status) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+                setSuggestions(predictions);
+            } else {
+                setSuggestions([]);
+            }
+        });
+    };
+
+    const handleSuggestionClick = (description) => {
+        setAddress(description);
+        setSuggestions([]);
     };
 
     function handleKeyPress(e) {
         if (e.keyCode === 13) {
             getRepInfoByAddress();
         }
-    };
+    }
 
     return (
-        <div className='wholeComponentResults'>
+        <div className='wholeComponent'>
             <h1 className='searchTitle'><NavLink to='/' className='searchTitle'>REPRESENT</NavLink></h1>
             <img src={logo} className='searchLogo' alt='American flag' />
             <div>
-                <PlacesAutocomplete
-                    value={address}
-                    onChange={setAddress}
-                    onSelect={setAddress}
-                    className='boxAndSuggestions'>
+                <div className='inputAndButton'>
+                    <input
+                        id='address-input'
+                        ref={inputRef}
+                        type='text'
+                        className='inputText'
+                        placeholder='ENTER ADDRESS TO FIND YOUR REPRESENTATIVES'
+                        value={address}
+                        onChange={handleInputChange}
+                        onKeyUp={handleKeyPress}
+                        required
+                    />
+                    <button onClick={getRepInfoByAddress} className='searchButton'>SEARCH</button>
+                </div>
+                <div onClick={handleClickButton}></div>
+                {openMenu && <div ref={ref}></div>}
 
-                    {({ getInputProps, suggestions, getSuggestionItemProps, loading }) => (
-                        <div>
-                            <div className='inputAndButton'>
-                                <input type='text' className='inputText' {...getInputProps({ placeholder: "ENTER ADDRESS TO FIND YOUR REPRESENTATIVES" })} required onKeyUp={handleKeyPress} />
-                                <button onClick={getRepInfoByAddress} className='searchButton'>SEARCH</button>
-                            </div>
-                            <div>
-                                <div onClick={handleClickButton}></div>
-                                {openMenu && <div ref={ref}></div>}
-                            </div>
-                            <div>
-                                {loading ? <div className='loading'>...loading</div> : null}
-
-                                {suggestions.map((suggestion) => {
-                                    const style = {
-                                        backgroundColor: suggestion.active ? "#0e448b" : "#fff",
-                                        color: suggestion.active ? "#fff" : "#000000"
-                                    }
-                                    return (
-                                        <div
-                                            {...getSuggestionItemProps(suggestion, { style })} className='dropdownItem' >
-                                            {suggestion.description}
-                                        </div>
-                                    )
-                                })}
-                            </div>
+                <div className='suggestionsContainer'>
+                    {suggestions.map((suggestion) => (
+                        <div
+                            key={suggestion.place_id}
+                            className='dropdownItem'
+                            onClick={() => handleSuggestionClick(suggestion.description)}
+                        >
+                            {suggestion.description}
                         </div>
-                    )}
-                </PlacesAutocomplete>
+                    ))}
+                </div>
             </div>
         </div>
     );
@@ -104,7 +126,7 @@ function Search(props) {
 const mapStateToProps = (state) => {
     return {
         reps: state.reps
-    }
+    };
 };
 
 const mapDispatchToProps = (dispatch) => {
@@ -113,7 +135,7 @@ const mapDispatchToProps = (dispatch) => {
             type: 'FETCH_REPS',
             payload: reps
         })
-    }
+    };
 };
 
 export default connect(mapStateToProps, mapDispatchToProps)(Search);
