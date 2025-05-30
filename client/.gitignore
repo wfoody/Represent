@@ -1,3 +1,7 @@
 node_modules/
+<<<<<<< HEAD
 
 .env
+=======
+.eslintcache/
+>>>>>>> a4b939e8 (Add .eslintcache to .gitignore)
